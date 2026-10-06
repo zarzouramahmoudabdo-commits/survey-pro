@@ -1,0 +1,37 @@
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0}
+#app{display:flex;flex-direction:column;height:100dvh}
+header{padding:10px 16px;background:#1e293b;display:flex;justify-content:space-between;align-items:center}
+h1{margin:0;font-size:18px}
+.bar{display:flex;gap:8px;align-items:center;padding:8px 12px;flex-wrap:wrap}
+button,select,input[type=file]{background:#334155;color:#e2e8f0;border:0;border-radius:8px;padding:8px 12px;font-size:14px}
+button{background:#0ea5e9;color:#fff}
+#views{flex:1;min-height:0;position:relative}
+#tableView{position:absolute;inset:0;overflow:auto}
+.wrap{padding:0 8px 16px}
+.hidden{display:none!important}
+table{width:100%;border-collapse:collapse;font-size:13px;direction:ltr}
+th,td{padding:8px 6px;border-bottom:1px solid #334155;text-align:center;white-space:nowrap}
+th{position:sticky;top:0;background:#1e293b}
+tbody tr:active{background:#0ea5e955}
+#mapView{position:absolute;inset:0}
+#map{width:100%;height:100%;background:#0b1220}
+.tools{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.tools button{width:42px;height:42px;font-size:20px;padding:0;background:#1e293bdd;border:1px solid #475569}
+.tools button.on{background:#0ea5e9}
+nav{display:flex;background:#1e293b}
+nav button{flex:1;background:transparent;border-radius:0;padding:14px;color:#94a3b8}
+nav button.on{color:#fff;border-top:2px solid #0ea5e9}
+.pt .dot{position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:#f43f5e;border:2px solid #fff}
+.pt .lbl{position:absolute;left:9px;top:-20px;font-size:12px;font-weight:700;color:#fde68a;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap}
+.pop{direction:ltr;font-size:14px;line-height:1.6}
+.pop b{font-size:16px}
+.pb{display:flex;gap:6px;margin-top:6px}
+.pb button{padding:6px 8px;font-size:12px}
+#toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:8px 16px;border-radius:20px;opacity:0;transition:.2s;z-index:2000}
+#toast.show{opacity:1}
+#mpanel{position:absolute;left:10px;top:10px;z-index:1000;max-width:62%;background:#0f172af2;border:1px solid #f59e0b;border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.7;direction:rtl}
+#mpanel .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+#mpanel .mh button{padding:2px 10px;margin-inline-start:4px;background:#334155}
+#mpanel .mt{margin-top:6px;padding-top:6px;border-top:1px solid #334155;color:#fde68a}

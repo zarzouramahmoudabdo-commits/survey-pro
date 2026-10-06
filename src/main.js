@@ -23,7 +23,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 $('app').innerHTML = `
 <header><h1>Mahmoud Zarzoura</h1><span id="count">0 نقطة</span></header>
 <section class="bar">
-  <input type="file" id="file" accept=".sdr,.txt,.csv,.dat,.xyz,.pts" />
+  <input type="file" id="file" />
   <select id="order">
     <option value="AUTO">ترتيب: تلقائي</option>
     <option value="NE">N ثم E</option>

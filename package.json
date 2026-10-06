@@ -12,6 +12,9 @@
     "vite": "^8.3.0"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "dxf-parser": "^1.1.2",
     "leaflet": "^1.9.4",
     "proj4": "^2.22.0"

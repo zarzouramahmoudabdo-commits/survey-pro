@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mahmoud Zarzoura</string>
+    <string name="title_activity_main">Mahmoud Zarzoura</string>
+    <string name="package_name">com.mahmoudzarzoura.app</string>
+    <string name="custom_url_scheme">com.mahmoudzarzoura.app</string>
+</resources>

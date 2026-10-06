@@ -1,0 +1,15 @@
+import fs from 'fs';
+const g = [];
+const add = (...a) => a.forEach((x) => g.push(String(x)));
+add(0, 'SECTION', 2, 'ENTITIES');
+const line = (l, x1, y1, x2, y2) => add(0, 'LINE', 8, l, 10, x1, 20, y1, 30, 0, 11, x2, 21, y2, 31, 0);
+const poly = (l, pts, closed) => { add(0, 'LWPOLYLINE', 8, l, 90, pts.length, 70, closed ? 1 : 0); pts.forEach(([x, y]) => add(10, x, 20, y)); };
+const E0 = 635440, N0 = 3439165;
+poly('BUILDING', [[E0, N0], [E0 + 10, N0], [E0 + 10, N0 + 10], [E0, N0 + 10]], true);
+line('ROAD', E0 - 10, N0 - 5, E0 + 20, N0 - 5);
+line('ROAD', E0 - 10, N0 - 8, E0 + 20, N0 - 8);
+add(0, 'CIRCLE', 8, 'TREES', 10, E0 + 5, 20, N0 + 5, 30, 0, 40, 2);
+add(0, 'ARC', 8, 'TREES', 10, E0 + 15, 20, N0 + 5, 30, 0, 40, 3, 50, 0, 51, 180);
+add(0, 'TEXT', 8, 'TEXT', 10, E0 + 2, 20, N0 + 11, 30, 0, 40, 1, 1, 'TEST BUILDING');
+add(0, 'ENDSEC', 0, 'EOF');
+fs.writeFileSync(process.argv[2], g.join('\n') + '\n');

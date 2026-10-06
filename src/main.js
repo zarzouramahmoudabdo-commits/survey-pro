@@ -21,7 +21,7 @@ const f3 = (v) => v.toFixed(3);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 $('app').innerHTML = `
-<header><h1>Survey Pro</h1><span id="count">0 نقطة</span></header>
+<header><h1>Mahmoud Zarzoura</h1><span id="count">0 نقطة</span></header>
 <section class="bar">
   <input type="file" id="file" accept=".sdr,.txt,.csv,.dat,.xyz,.pts" />
   <select id="order">
@@ -197,7 +197,7 @@ function showTab(t) {
 function load(text) {
   points = parsePoints(text, $('order').value);
   sel = [];
-  render();
+  render(); window.__changed && window.__changed();
   dirty = true;
   if (tab === 'map') { drawMap(true); dirty = false; }
   drawMeasure();
@@ -206,7 +206,9 @@ function load(text) {
 
 // ---------- الأحداث ----------
 $('file').addEventListener('change', async (e) => {
-  const f = e.target.files[0]; if (f) load(await f.text());
+  const f = e.target.files[0]; if (!f) return;
+  try { const t = await f.text(); e.target.value = ''; load(t); }
+  catch (err) { e.target.value = ''; toast('تعذر قراءة الملف: ' + (err.message || err)); }
 });
 $('demo').onclick = () => load(DEMO);
 $('copyAll').onclick = () => copy(points.map((p) => [p.name, p.n, p.e, p.z, p.code].join('\t')).join('\n'));
@@ -231,3 +233,11 @@ $('mpanel').addEventListener('click', (e) => {
   if (e.target.id === 'mUndo') { sel.pop(); drawMeasure(); }
   if (e.target.id === 'mClear') { sel = []; drawMeasure(); }
 });
+window.__pts = () => points;
+import('./geo.js');
+window.__map = map;
+import('./dxf.js');
+window.__setPts = (a) => { points = a; sel = []; render(); dirty = true; if (tab === 'map') { drawMap(false); dirty = false; } drawMeasure(); window.__changed && window.__changed(); };
+import('./edit.js');
+window.__setPts = (a) => { points = a; sel = []; render(); dirty = true; if (tab === 'map') { drawMap(false); dirty = false; } drawMeasure(); window.__changed && window.__changed(); };
+import('./edit.js');

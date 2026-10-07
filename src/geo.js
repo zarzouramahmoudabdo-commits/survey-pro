@@ -70,12 +70,14 @@ function initMap() {
   L.control.scale({ imperial: false }).addTo(gmap);
   gmap.setView([30, 31], 5);
   layer = L.layerGroup().addTo(gmap);
+  window.__gmap = gmap;
 }
 
 function draw() {
   initMap();
   gmap.invalidateSize();
   layer.clearLayers();
+  window.dispatchEvent(new Event('geo-draw'));
   const info = $('geoInfo');
   const pts = getPts();
   if (!pts.length) { info.textContent = 'ارفع ملف نقط الأول.'; return; }
@@ -125,3 +127,5 @@ $('tTable').addEventListener('click', hide);
 $('tMap').addEventListener('click', hide);
 $('crs').onchange = () => { $('geoCustom').classList.toggle('hidden', $('crs').value !== 'custom'); draw(); };
 $('geoCustom').addEventListener('change', draw);
+window.__geoDef = defOf;
+import('./bm.js');

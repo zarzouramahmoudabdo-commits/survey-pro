@@ -1,4 +1,5 @@
-import { toCSV, toSDR, toDXF } from './exportfmt.js';
+import { toCSV, toSDR, toDXF, toSame } from './exportfmt.js';
+import { Capacitor } from '@capacitor/core';
 
 const css = document.createElement('style');
 css.textContent = `
@@ -76,6 +77,66 @@ $('aUndo').onclick = () => {
   toast('اتحذفت ' + name);
 };
 
+// ---------- تعديل / حذف نقطة ----------
+const css2 = document.createElement('style');
+css2.textContent = '#epanel{position:fixed;left:10px;right:10px;bottom:70px;z-index:1200;background:#0f172af7;border:1px solid #f59e0b;border-radius:10px;padding:10px;font-size:13px;direction:rtl}#epanel.hidden{display:none}';
+document.head.appendChild(css2);
+const ep = document.createElement('div');
+ep.id = 'epanel'; ep.className = 'hidden';
+ep.innerHTML = `<b>✏ تعديل نقطة</b>
+<div class="fg">
+  <input id="eName" placeholder="الاسم" />
+  <input id="eCode" placeholder="الكود" />
+  <input id="eN" inputmode="decimal" placeholder="N" />
+  <input id="eE" inputmode="decimal" placeholder="E" />
+  <input id="eZ" inputmode="decimal" placeholder="Z" />
+</div>
+<div class="rowb"><button class="g" id="eSave">حفظ</button><button id="eCopy">نسخ</button><button class="s" id="eDel">🗑 حذف</button><button class="s" id="eClose">إغلاق</button></div>`;
+document.body.appendChild(ep);
+let ei = -1, delTimer = 0;
+const resetDel = () => { clearTimeout(delTimer); delTimer = 0; $('eDel').textContent = '🗑 حذف'; };
+window.__editPt = (i) => {
+  const p = get()[i]; if (!p) return;
+  ei = i; resetDel();
+  $('eName').value = p.name; $('eCode').value = p.code || '';
+  $('eN').value = p.n; $('eE').value = p.e; $('eZ').value = p.z;
+  ep.classList.remove('hidden');
+};
+$('eClose').onclick = () => { resetDel(); ep.classList.add('hidden'); };
+$('eCopy').onclick = async () => {
+  const p = get()[ei]; if (!p) return;
+  try { await navigator.clipboard.writeText(`${p.n},${p.e},${p.z}`); toast('تم النسخ'); } catch (e) { toast('فشل النسخ'); }
+};
+$('eSave').onclick = () => {
+  const n = num($('eN').value), e = num($('eE').value), z = num($('eZ').value);
+  const name = $('eName').value.trim();
+  if (isNaN(n) || isNaN(e)) { toast('اكتب N و E صح'); return; }
+  if (!name) { toast('الاسم مطلوب'); return; }
+  const a = get().slice(); const p = a[ei]; if (!p) return;
+  a[ei] = { ...p, name, code: $('eCode').value.trim(), n, e, z: isNaN(z) ? 0 : z };
+  window.__setPts(renum(a));
+  resetDel(); ep.classList.add('hidden'); toast('تم الحفظ');
+};
+$('eDel').onclick = () => {
+  if (!delTimer) { delTimer = setTimeout(resetDel, 3000); $('eDel').textContent = 'تأكيد الحذف؟'; return; }
+  resetDel();
+  window.__setPts(renum(get().filter((_, k) => k !== ei)));
+  ep.classList.add('hidden'); toast('تم الحذف');
+};
+
+// ---------- حفظ بيانات الملف المستورد ----------
+const MKEY = 'sp_meta_v1';
+try { const m = JSON.parse(localStorage.getItem(MKEY) || 'null'); if (m && m.lines) { globalThis.__srcMeta = m; window.__srcName = m.name || ''; } } catch (e) { /* ignore */ }
+const fileIn = $('file');
+if (fileIn) fileIn.addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) window.__srcName = f.name; });
+const prevChanged = window.__changed;
+window.__changed = () => {
+  const m = globalThis.__srcMeta;
+  if (m && window.__srcName && m.name !== window.__srcName) m.name = window.__srcName;
+  prevChanged();
+  try { localStorage.setItem(MKEY, JSON.stringify(m || null)); } catch (e) { /* ignore */ }
+};
+
 // ---------- التصدير ----------
 const hdr = document.querySelector('section.bar');
 const bX = document.createElement('button');
@@ -85,14 +146,32 @@ const xp = document.createElement('div');
 xp.id = 'xpanel'; xp.className = 'hidden';
 xp.innerHTML = `<b>📤 تصدير النقط</b>
 <div class="fg">
-  <select id="xFmt"><option value="sdr">SDR33 (.sdr)</option><option value="csv">CSV (.csv)</option><option value="dxf">DXF (.dxf)</option></select>
+  <select id="xFmt"></select>
   <select id="xOrd"><option value="NE">N ثم E</option><option value="EN">E ثم N</option></select>
   <input id="xH" inputmode="decimal" value="1" placeholder="ارتفاع النص (DXF)" />
-  <input id="xName" value="survey_points" placeholder="اسم الملف" />
+  <input id="xName" placeholder="اسم الملف" />
 </div>
-<div class="rowb"><button class="g" id="xDl">⬇ تحميل</button><button id="xCp">نسخ النص</button><button class="s" id="xClose">إغلاق</button></div>`;
+<div class="rowb"><button class="g" id="xDl">⬇ حفظ / مشاركة</button><button id="xCp">نسخ النص</button><button class="s" id="xClose">إغلاق</button></div>`;
 document.body.appendChild(xp);
-bX.onclick = () => xp.classList.toggle('hidden');
+
+const extOf = (n) => { const m = String(n || '').match(/\.[A-Za-z0-9]+$/); return m ? m[0] : ''; };
+function defName(fmt) {
+  const m = globalThis.__srcMeta;
+  if (fmt === 'same' && m && m.name) return m.name.replace(/\.[A-Za-z0-9]+$/, '') + '_edited';
+  return 'survey_points';
+}
+function refresh() {
+  const m = globalThis.__srcMeta;
+  const o = [];
+  if (m && m.lines) o.push(['same', 'نفس صيغة الملف المستورد (' + (m.format === 'sdr' ? 'SDR' : 'نصي') + ')']);
+  o.push(['sdr', 'SDR33 (.sdr)'], ['csv', 'CSV (.csv)'], ['dxf', 'DXF (.dxf)']);
+  $('xFmt').innerHTML = o.map((x) => `<option value="${x[0]}">${x[1]}</option>`).join('');
+  $('xFmt').value = o[0][0];
+  $('xName').value = defName(o[0][0]);
+  $('xOrd').disabled = o[0][0] === 'same';
+}
+$('xFmt').onchange = () => { $('xName').value = defName($('xFmt').value); $('xOrd').disabled = $('xFmt').value === 'same'; };
+bX.onclick = () => { if (xp.classList.contains('hidden')) { refresh(); xp.classList.remove('hidden'); } else xp.classList.add('hidden'); };
 $('xClose').onclick = () => xp.classList.add('hidden');
 
 function build() {
@@ -100,19 +179,36 @@ function build() {
   if (!pts.length) { toast('مفيش نقط للتصدير'); return null; }
   const f = $('xFmt').value, o = $('xOrd').value;
   const nm = ($('xName').value.trim() || 'survey_points').replace(/[^\w\-.]+/g, '_');
+  if (f === 'same') {
+    const m = globalThis.__srcMeta, text = toSame(pts, m);
+    if (text === null) { toast('مفيش ملف مستورد'); return null; }
+    return { text, file: nm + (extOf(m.name) || (m.format === 'sdr' ? '.sdr' : '.txt')), mime: 'text/plain' };
+  }
   if (f === 'sdr') return { text: toSDR(pts, o), file: nm + '.sdr', mime: 'text/plain' };
   if (f === 'csv') return { text: toCSV(pts, o), file: nm + '.csv', mime: 'text/csv' };
   const h = num($('xH').value);
   return { text: toDXF(pts, isNaN(h) || h <= 0 ? 1 : h, true), file: nm + '.dxf', mime: 'application/dxf' };
 }
-$('xDl').onclick = () => {
-  const r = build(); if (!r) return;
-  const url = URL.createObjectURL(new Blob([r.text], { type: r.mime }));
+async function saveFile(name, text, mime) {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      const r = await Filesystem.writeFile({ path: name, data: text, directory: Directory.Cache, encoding: Encoding.UTF8 });
+      await Share.share({ title: name, url: r.uri, dialogTitle: 'حفظ / مشاركة الملف' });
+    } catch (err) {
+      const msg = String((err && err.message) || err);
+      if (!/cancel/i.test(msg)) toast('تعذر الحفظ: ' + msg);
+    }
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
   const a = document.createElement('a');
-  a.href = url; a.download = r.file; document.body.appendChild(a); a.click(); a.remove();
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  toast('تم تجهيز ' + r.file);
-};
+  toast('تم تجهيز ' + name);
+}
+$('xDl').onclick = async () => { const r = build(); if (r) await saveFile(r.file, r.text, r.mime); };
 $('xCp').onclick = async () => {
   const r = build(); if (!r) return;
   try { await navigator.clipboard.writeText(r.text); toast('تم النسخ'); } catch (e) { toast('فشل النسخ'); }

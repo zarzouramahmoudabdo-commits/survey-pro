@@ -29,7 +29,6 @@ $('app').innerHTML = `
     <option value="NE">N ثم E</option>
     <option value="EN">E ثم N</option>
   </select>
-  <button id="demo">تجريبي</button>
 </section>
 <main id="views">
   <div id="tableView">
@@ -114,9 +113,10 @@ function popupEl(p) {
   d.className = 'pop';
   d.innerHTML = `<b>${esc(p.name)}</b><div>N: ${f3(p.n)}</div><div>E: ${f3(p.e)}</div><div>Z: ${f3(p.z)}</div>` +
     (p.code ? `<div>${esc(p.code)}</div>` : '') +
-    `<div class="pb"><button data-k="nez">نسخ N,E,Z</button><button data-k="en">نسخ E,N</button></div>`;
+    `<div class="pb"><button data-k="nez">نسخ N,E,Z</button><button data-k="en">نسخ E,N</button><button data-k="edit">✏ تعديل</button></div>`;
   d.addEventListener('click', (ev) => {
     const k = ev.target.dataset.k; if (!k) return;
+    if (k === 'edit') { map.closePopup(); if (window.__editPt) window.__editPt(p.id - 1); return; }
     copy(k === 'nez' ? `${f3(p.n)},${f3(p.e)},${f3(p.z)}` : `${f3(p.e)},${f3(p.n)}`);
   });
   return d;
@@ -210,12 +210,10 @@ $('file').addEventListener('change', async (e) => {
   try { const t = await f.text(); e.target.value = ''; load(t); }
   catch (err) { e.target.value = ''; toast('تعذر قراءة الملف: ' + (err.message || err)); }
 });
-$('demo').onclick = () => load(DEMO);
 $('copyAll').onclick = () => copy(points.map((p) => [p.name, p.n, p.e, p.z, p.code].join('\t')).join('\n'));
 $('rows').addEventListener('click', (e) => {
   const tr = e.target.closest('tr'); if (!tr) return;
-  const p = points[+tr.dataset.i];
-  copy(`${p.name}\t${p.n}\t${p.e}\t${p.z}`);
+  if (window.__editPt) window.__editPt(+tr.dataset.i);
 });
 $('tTable').onclick = () => showTab('table');
 $('tMap').onclick = () => showTab('map');

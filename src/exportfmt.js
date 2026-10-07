@@ -36,3 +36,43 @@ export function toDXF(pts, h = 1, link = true) {
   add(0, 'ENDSEC', 0, 'EOF');
   return g.join('\n') + '\n';
 }
+
+// ---- تصدير بنفس صيغة الملف المستورد ----
+function sameFmt(v, dec) {
+  let d = dec, s = Number(v).toFixed(d);
+  while (s.length > 16 && d > 0) { d--; s = Number(v).toFixed(d); }
+  return s;
+}
+function regen(p, line, meta) {
+  const [a, b] = meta.order === 'EN' ? [p.e, p.n] : [p.n, p.e];
+  if (meta.format === 'sdr') {
+    const body = pad(String(p.name).slice(0, 16), 16) + padE(sameFmt(a, meta.dec), 16) + padE(sameFmt(b, meta.dec), 16) + padE(sameFmt(p.z, meta.dec), 16);
+    return line.slice(0, 4) + (p.code ? body + p.code : body.trimEnd());
+  }
+  const parts = [p.name, sameFmt(a, meta.dec), sameFmt(b, meta.dec), sameFmt(p.z, meta.dec)];
+  if (p.code) parts.push(p.code);
+  return parts.join(meta.delim);
+}
+const same = (p) => p.o && p.o.name === p.name && p.o.n === p.n && p.o.e === p.e && p.o.z === p.z && p.o.code === p.code;
+
+export function toSame(pts, meta) {
+  if (!meta || !meta.lines) return null;
+  const dl = new Set(meta.dl);
+  const byLi = new Map();
+  pts.forEach((p) => { if (p.li !== undefined) byLi.set(p.li, p); });
+  const out = [];
+  let last = -1;
+  meta.lines.forEach((line, i) => {
+    if (!dl.has(i)) { out.push(line); return; }
+    const p = byLi.get(i);
+    if (!p) return;
+    out.push(same(p) ? line : regen(p, line, meta));
+    last = out.length - 1;
+  });
+  const added = pts.filter((p) => p.li === undefined);
+  const proto = meta.format === 'sdr' ? '08KI' : '';
+  const lines = added.map((p) => regen(p, proto, meta));
+  let at = last >= 0 ? last + 1 : (out.length && out[out.length - 1] === '' ? out.length - 1 : out.length);
+  out.splice(at, 0, ...lines);
+  return out.join(meta.eol);
+}

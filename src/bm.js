@@ -10,7 +10,9 @@ const toast = (m) => { const t = $('toast'); if (!t) return; t.textContent = m; 
 
 let bms = [];
 try { bms = JSON.parse(localStorage.getItem(KEY) || '[]'); if (!Array.isArray(bms)) bms = []; } catch (e) { bms = []; }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(bms)); } catch (e) { /* ignore */ } };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(bms)); } catch (e) { /* ignore */ } if (window.__bmChanged) window.__bmChanged(bms); };
+window.__bmGet = () => bms;
+window.__bmSet = (a) => { bms = a; try { localStorage.setItem(KEY, JSON.stringify(bms)); } catch (e) { /* ignore */ } if (window.__bmChanged) window.__bmChanged(bms); if (ensureMap()) renderBms(); if (!list.classList.contains('hidden')) renderRows(); };
 let target = null, me = null, watchId = null, editing = null, arrived = false, firstFix = false;
 let gm = null, bmLayer = null, meLayer = null;
 
@@ -81,7 +83,7 @@ function ensureMap() {
 function popupEl(b, ll) {
   const d = document.createElement('div');
   d.style.cssText = 'direction:rtl;font-size:13px;line-height:1.6;min-width:170px';
-  d.innerHTML = `<b>${esc(b.name)}</b>${b.desc ? `<div>${esc(b.desc)}</div>` : ''}<div style="direction:ltr">N: ${f3(b.n)}<br>E: ${f3(b.e)}${b.z !== null && b.z !== undefined ? `<br>Z: ${f3(b.z)}` : ''}<br>${ll[0].toFixed(6)}, ${ll[1].toFixed(6)}</div>
+  d.innerHTML = `<b>${esc(b.name)}</b>${b.desc ? `<div>${esc(b.desc)}</div>` : ''}${b.by ? `<div style="font-size:11px;color:#94a3b8">بواسطة: ${esc(b.by)}</div>` : ''}<div style="direction:ltr">N: ${f3(b.n)}<br>E: ${f3(b.e)}${b.z !== null && b.z !== undefined ? `<br>Z: ${f3(b.z)}` : ''}<br>${ll[0].toFixed(6)}, ${ll[1].toFixed(6)}</div>
   <div class="rowb" style="margin-top:6px"><button data-k="go">🧭 توجّه</button><button data-k="ed">✏</button><button data-k="cp">نسخ</button></div>`;
   d.addEventListener('click', (ev) => {
     const k = ev.target.dataset && ev.target.dataset.k; if (!k) return;
@@ -252,3 +254,4 @@ nb.addEventListener('click', (ev) => { if (ev.target.id === 'navStop') { target 
 $('bmGps').onclick = () => { if (watchId === null) startGps(); else stopGps(); };
 $('bmFit').onclick = fitMe;
 window.addEventListener('geo-draw', () => { if (ensureMap()) renderBms(); });
+import('./sync.js');

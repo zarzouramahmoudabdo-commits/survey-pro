@@ -25,10 +25,7 @@ const num = (v) => { const s = String(v).trim().replace(',', '.'); return s !== 
 window.__changed = () => {
   try { localStorage.setItem(KEY, JSON.stringify(get())); } catch (e) { /* ignore */ }
 };
-try {
-  const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
-  if (Array.isArray(saved) && saved.length && !get().length) window.__setPts(renum(saved));
-} catch (e) { /* ignore */ }
+// (اتشال الفتح التلقائي للنقط القديمة، دلوقتي المشاريع بتتفتح من القايمة الجانبية)
 
 // ---------- إضافة نقطة يدوي ----------
 const tools = document.querySelector('.tools');
@@ -126,7 +123,6 @@ $('eDel').onclick = () => {
 
 // ---------- حفظ بيانات الملف المستورد ----------
 const MKEY = 'sp_meta_v1';
-try { const m = JSON.parse(localStorage.getItem(MKEY) || 'null'); if (m && m.lines) { globalThis.__srcMeta = m; window.__srcName = m.name || ''; } } catch (e) { /* ignore */ }
 const fileIn = $('file');
 if (fileIn) fileIn.addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) window.__srcName = f.name; });
 const prevChanged = window.__changed;
@@ -213,3 +209,4 @@ $('xCp').onclick = async () => {
   const r = build(); if (!r) return;
   try { await navigator.clipboard.writeText(r.text); toast('تم النسخ'); } catch (e) { toast('فشل النسخ'); }
 };
+import('./projects.js');

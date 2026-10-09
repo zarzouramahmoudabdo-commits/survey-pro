@@ -12,6 +12,8 @@ let bms = [];
 try { bms = JSON.parse(localStorage.getItem(KEY) || '[]'); if (!Array.isArray(bms)) bms = []; } catch (e) { bms = []; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(bms)); } catch (e) { /* ignore */ } if (window.__bmChanged) window.__bmChanged(bms); };
 window.__bmGet = () => bms;
+window.__bmAddLL = (name, desc, lat, lon) => { const [n, e] = toNE(lat, lon); const b = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, desc, n: Number(n.toFixed(3)), e: Number(e.toFixed(3)), z: null }; bms.push(b); save(); if (ensureMap()) renderBms(); return b.id; };
+window.__bmGo = (id) => setTarget(id);
 window.__bmSet = (a) => { bms = a; try { localStorage.setItem(KEY, JSON.stringify(bms)); } catch (e) { /* ignore */ } if (window.__bmChanged) window.__bmChanged(bms); if (ensureMap()) renderBms(); if (!list.classList.contains('hidden')) renderRows(); };
 let target = null, me = null, watchId = null, editing = null, arrived = false, firstFix = false;
 let gm = null, bmLayer = null, meLayer = null;
@@ -255,3 +257,4 @@ $('bmGps').onclick = () => { if (watchId === null) startGps(); else stopGps(); }
 $('bmFit').onclick = fitMe;
 window.addEventListener('geo-draw', () => { if (ensureMap()) renderBms(); });
 import('./sync.js');
+import('./kmz.js');

@@ -48,6 +48,17 @@ finp.type = 'file'; finp.style.display = 'none';
 document.body.appendChild(finp);
 
 // ---------- أدوات ----------
+const css2 = document.createElement('style');
+css2.textContent = '.kzt{color:#fff;font-size:13px;font-weight:800;text-shadow:0 0 3px #000,0 0 3px #000,0 0 5px #000;white-space:nowrap;transform:translate(-50%,-50%);cursor:pointer}';
+document.head.appendChild(css2);
+const HEXTAG = /\s*\[[0-9A-Fa-f]+\](:\d+)?\s*$/;
+const kindOf = (f) => {
+  const last = String(f.f || '').split(' / ').pop();
+  if (HEXTAG.test(last)) return last.replace(HEXTAG, '').trim() || 'عناصر';
+  return f.f || (f.g[0].t === 'pt' ? 'نقاط' : f.g[0].t === 'pg' ? 'مضلعات' : 'خطوط');
+};
+const isLabel = (f) => f.g[0].t === 'pt' || !!(f.n && !HEXTAG.test(f.n));
+const defaultHidden = (rec) => [...new Set(rec.features.map(kindOf))].filter((k) => /TIN|SURFACE|CONTOUR/i.test(k));
 function centerOf(f) {
   const g = f.g[0];
   if (g.t === 'pt') return g.p;
@@ -66,9 +77,11 @@ function ensureBm(f, c) {
 }
 function popupEl(f) {
   const c = centerOf(f);
+  const last = String(f.f || '').split(' / ').pop();
+  const sub = f.f && !HEXTAG.test(last) ? f.f : '';
   const d = document.createElement('div');
   d.style.cssText = 'direction:rtl;font-size:13px;line-height:1.6;min-width:170px;max-width:240px';
-  d.innerHTML = `<b>${esc(f.n || 'بدون اسم')}</b>${f.f ? `<div style="font-size:11px;color:#94a3b8">${esc(f.f)}</div>` : ''}${f.d ? `<div>${esc(f.d)}</div>` : ''}<div style="direction:ltr;font-size:12px">${c[0].toFixed(6)}, ${c[1].toFixed(6)}</div><div class="rowb" style="margin-top:6px"><button data-k="go">🧭 توجّه</button><button data-k="bm">➕ ثابتة</button><button data-k="cp">نسخ</button></div>`;
+  d.innerHTML = `<b>${esc(f.n || 'بدون اسم')}</b>${sub ? `<div style="font-size:11px;color:#94a3b8">${esc(sub)}</div>` : ''}${f.d ? `<div>${esc(f.d)}</div>` : ''}<div style="direction:ltr;font-size:12px">${c[0].toFixed(6)}, ${c[1].toFixed(6)}</div><div class="rowb" style="margin-top:6px"><button data-k="go">🧭 توجّه</button><button data-k="bm">➕ ثابتة</button><button data-k="cp">نسخ</button></div>`;
   d.addEventListener('click', (ev) => {
     const k = ev.target.dataset && ev.target.dataset.k; if (!k) return;
     if (!window.__bmAddLL) { toast('مكوّن الثوابت لسه ما اتحمّلش'); return; }
@@ -83,20 +96,28 @@ function popupEl(f) {
 function drawLayer(rec) {
   const old = groups.get(rec.id);
   if (old) { gm.removeLayer(old.group); gm.removeLayer(old.labels); }
+  const hid = new Set(rec.hidden || []);
   const group = L.layerGroup(), labels = L.layerGroup(), refs = new Map();
   rec.features.forEach((f, i) => {
+    if (hid.has(kindOf(f))) return;
     const st = f.s || {}, ls = [];
     for (const g of f.g) {
-      let lyr;
-      if (g.t === 'pg') lyr = L.polygon(g.p, { color: st.c || '#fbbf24', weight: st.w || 2, fillColor: st.fc || st.c || '#fbbf24', fillOpacity: st.fa === undefined ? 0.25 : st.fa, renderer: rend });
-      else if (g.t === 'ln') lyr = L.polyline(g.p, { color: st.c || '#38bdf8', weight: st.w || 2, renderer: rend });
-      else lyr = L.circleMarker(g.p, { radius: 6, color: '#fff', weight: 2, fillColor: '#fb923c', fillOpacity: 1, renderer: rend });
-      lyr.bindPopup(() => popupEl(f));
-      group.addLayer(lyr); ls.push(lyr);
+      if (g.t !== 'pt') continue;
+      const m = L.marker(g.p, { icon: L.divIcon({ className: 'kzt', html: esc(f.n || '•'), iconSize: [0, 0] }) });
+      m.bindPopup(() => popupEl(f)); labels.addLayer(m); ls.push(m);
+    }
+    const pgs = f.g.filter((g) => g.t === 'pg').map((g) => g.p), lns = f.g.filter((g) => g.t === 'ln').map((g) => g.p);
+    if (pgs.length) {
+      const lyr = L.polygon(pgs.length === 1 ? pgs[0] : pgs, { color: st.c || '#fbbf24', weight: st.w || 2, fillColor: st.fc || st.c || '#fbbf24', fillOpacity: st.fa === undefined ? 0.25 : st.fa, renderer: rend });
+      lyr.bindPopup(() => popupEl(f)); group.addLayer(lyr); ls.push(lyr);
+    }
+    if (lns.length) {
+      const lyr = L.polyline(lns.length === 1 ? lns[0] : lns, { color: st.c || '#38bdf8', weight: st.w || 2, renderer: rend });
+      lyr.bindPopup(() => popupEl(f)); group.addLayer(lyr); ls.push(lyr);
     }
     const c = centerOf(f);
     refs.set(i, { ls, c });
-    if (f.n && rec.features.length <= 2000) L.marker(c, { icon: L.divIcon({ className: 'kzl', html: esc(f.n), iconSize: [0, 0] }), interactive: false }).addTo(labels);
+    if (f.g[0].t !== 'pt' && isLabel(f) && rec.features.length <= 4000) L.marker(c, { icon: L.divIcon({ className: 'kzl', html: esc(f.n), iconSize: [0, 0] }), interactive: false }).addTo(labels);
   });
   groups.set(rec.id, { group, labels, refs });
   applyVis();
@@ -107,7 +128,7 @@ function applyVis() {
   for (const r of recs) {
     const g = groups.get(r.id); if (!g) continue;
     if (r.visible) g.group.addTo(gm); else gm.removeLayer(g.group);
-    if (r.visible && z >= 17) g.labels.addTo(gm); else gm.removeLayer(g.labels);
+    if (r.visible && z >= 16) g.labels.addTo(gm); else gm.removeLayer(g.labels);
   }
 }
 function ensureMap() {
@@ -125,18 +146,30 @@ function fitRec(rec) {
 }
 
 // ---------- القايمة والبحث ----------
+let openKinds = null, kindList = [];
 function renderPanel() {
   const terms = norm(q).split(/\s+/).filter(Boolean);
   let html = '';
   if (terms.length) {
     const res = [];
-    for (const r of recs) r.features.forEach((f, i) => { const h = norm(f.n + ' ' + f.f + ' ' + f.d); if (terms.every((t) => h.includes(t))) res.push({ r, f, i }); });
+    for (const r of recs) {
+      const g = groups.get(r.id); if (!g) continue;
+      r.features.forEach((f, i) => { if (!g.refs.has(i) || !isLabel(f)) return; const h = norm(f.n + ' ' + f.d); if (terms.every((t) => h.includes(t))) res.push({ r, f, i }); });
+    }
     html += `<b>نتائج البحث (${res.length})</b>` + res.slice(0, 40).map(({ r, f, i }) =>
-      `<div class="kzr"><div class="kzn" data-fly="${r.id}:${i}"><b>${esc(f.n || 'بدون اسم')}</b><br><small style="color:#94a3b8">${esc(f.f || r.name)}</small></div><button data-go="${r.id}:${i}">🧭</button></div>`).join('') + (res.length > 40 ? '<div>… ضيّق البحث</div>' : '');
+      `<div class="kzr"><div class="kzn" data-fly="${r.id}:${i}"><b>${esc(f.n || 'بدون اسم')}</b><br><small style="color:#94a3b8">${esc(r.name)}</small></div><button data-go="${r.id}:${i}">🧭</button></div>`).join('') + (res.length > 40 ? '<div>… ضيّق البحث</div>' : '');
   }
   html += `<div style="margin-top:6px"><b>الطبقات (${recs.length})</b></div>` + (recs.length ? recs.map((r) => {
     const np = r.features.filter((f) => f.g[0].t === 'pt').length;
-    return `<div class="kzr"><div class="kzn" data-fit="${r.id}"><b>${esc(r.name)}</b><br><small style="color:#94a3b8">${r.count} عنصر</small></div><button data-vis="${r.id}">${r.visible ? '👁' : '🙈'}</button>${np ? `<button data-bm="${r.id}">${bmArm === r.id ? 'تأكيد؟' : '📌' + np}</button>` : ''}<button data-del="${r.id}">${delArm === r.id ? 'تأكيد؟' : '🗑'}</button></div>`;
+    let row = `<div class="kzr"><div class="kzn" data-fit="${r.id}"><b>${esc(r.name)}</b><br><small style="color:#94a3b8">${r.count} عنصر</small></div><button data-vis="${r.id}">${r.visible ? '👁' : '🙈'}</button><button data-kinds="${r.id}">⚙</button>${np ? `<button data-bm="${r.id}">${bmArm === r.id ? 'تأكيد؟' : '📌' + np}</button>` : ''}<button data-del="${r.id}">${delArm === r.id ? 'تأكيد؟' : '🗑'}</button></div>`;
+    if (openKinds === r.id) {
+      const cnt = new Map();
+      r.features.forEach((f) => { const k = kindOf(f); cnt.set(k, (cnt.get(k) || 0) + 1); });
+      kindList = [...cnt.keys()];
+      const hid = new Set(r.hidden || []);
+      row += '<div style="padding:4px 6px;background:#1e293b;border-radius:8px;margin:4px 0"><small style="color:#94a3b8">اختار اللي يظهر على الخريطة:</small>' + kindList.map((k, ki) => `<div class="kzr"><button data-kd="${r.id}:${ki}">${hid.has(k) ? '☐' : '☑'}</button><span>${esc(k)} (${cnt.get(k)})</span></div>`).join('') + '</div>';
+    }
+    return row;
   }).join('') : '<div style="color:#94a3b8;padding:6px 0">مفيش طبقات. اضغط 📥 واختار ملف KMZ أو KML.</div>');
   $('kzRows').innerHTML = html;
 }
@@ -144,7 +177,8 @@ const arm = (which, id) => { clearTimeout(armTimer); delArm = which === 'del' ? 
 function locate(key) {
   const [id, i] = key.split(':');
   const r = recs.find((x) => x.id === id), g = groups.get(id);
-  return r && g ? { r, f: r.features[+i], ref: g.refs.get(+i) } : null;
+  const ref = g && g.refs.get(+i);
+  return r && ref ? { r, f: r.features[+i], ref } : null;
 }
 function fly(key) {
   const t = locate(key); if (!t || !ensureMap()) return;
@@ -161,13 +195,14 @@ async function importFile(f) {
     let nm = base, k = 2;
     while (recs.some((r) => r.name === nm)) nm = base + ' (' + k++ + ')';
     const rec = { id: uid(), name: nm, at: Date.now(), visible: true, count: features.length, features };
+    rec.hidden = defaultHidden(rec);
     recs.unshift(rec);
     let saved = true;
     try { await dbPut(rec); } catch (e) { saved = false; }
     if (ensureMap()) { drawLayer(rec); fitRec(rec); }
     renderPanel();
     const c = (t) => features.filter((x) => x.g.some((g) => g.t === t)).length;
-    toast(`تم استيراد ${features.length} عنصر (${c('pg')} مضلع، ${c('pt')} نقطة، ${c('ln')} خط)` + (saved ? '' : ' — مش هيتحفظ بعد قفل التطبيق'));
+    toast(`تم استيراد ${features.length} عنصر (${c('pt')} نص/نقطة، ${c('pg')} مضلع، ${c('ln')} خط)` + (rec.hidden.length ? ' — اتخبّى: ' + rec.hidden.join('، ') : '') + (saved ? '' : ' — مش هيتحفظ بعد قفل التطبيق'));
   } catch (e) { toast('تعذر قراءة الملف: ' + (e.message || e)); }
 }
 
@@ -177,7 +212,7 @@ $('kzImp').onclick = () => finp.click();
 finp.onchange = async (e) => { const f = e.target.files && e.target.files[0]; if (f) await importFile(f); e.target.value = ''; };
 $('kzQ').addEventListener('input', (e) => { q = e.target.value; renderPanel(); });
 panel.addEventListener('click', (ev) => {
-  const el = ev.target.closest('[data-fly],[data-go],[data-fit],[data-vis],[data-bm],[data-del]'); if (!el) return;
+  const el = ev.target.closest('[data-fly],[data-go],[data-fit],[data-vis],[data-kinds],[data-kd],[data-bm],[data-del]'); if (!el) return;
   const d = el.dataset;
   if (d.fly) fly(d.fly);
   else if (d.go) {
@@ -186,7 +221,16 @@ panel.addEventListener('click', (ev) => {
     panel.classList.add('hidden'); window.__bmGo(ensureBm(t.f, t.ref.c).id);
   } else if (d.fit) { const r = recs.find((x) => x.id === d.fit); if (r) { panel.classList.add('hidden'); fitRec(r); } }
   else if (d.vis) { const r = recs.find((x) => x.id === d.vis); if (r) { r.visible = !r.visible; dbPut(r).catch(() => {}); applyVis(); renderPanel(); } }
-  else if (d.bm) {
+  else if (d.kinds) { openKinds = openKinds === d.kinds ? null : d.kinds; renderPanel(); }
+  else if (d.kd) {
+    const [id, ki] = d.kd.split(':'); const r = recs.find((x) => x.id === id), k = kindList[+ki];
+    if (!r || k === undefined) return;
+    const hid = new Set(r.hidden || []);
+    if (hid.has(k)) hid.delete(k); else hid.add(k);
+    r.hidden = [...hid]; dbPut(r).catch(() => {});
+    if (ensureMap()) drawLayer(r);
+    renderPanel();
+  } else if (d.bm) {
     if (bmArm !== d.bm) { arm('bm', d.bm); return; }
     clearTimeout(armTimer); bmArm = null;
     const r = recs.find((x) => x.id === d.bm); if (!r || !window.__bmAddLL) return;
@@ -202,4 +246,9 @@ panel.addEventListener('click', (ev) => {
   }
 });
 window.addEventListener('geo-draw', () => { if (!drawn && ensureMap()) drawAll(); });
-dbAll().then((list) => { recs = (list || []).sort((a, b) => (b.at || 0) - (a.at || 0)); if (ensureMap()) drawAll(); renderPanel(); }).catch(() => { /* ignore */ });
+dbAll().then((list) => {
+  recs = (list || []).sort((a, b) => (b.at || 0) - (a.at || 0));
+  recs.forEach((r) => { if (!r.hidden) r.hidden = defaultHidden(r); });
+  if (ensureMap()) drawAll();
+  renderPanel();
+}).catch(() => { /* ignore */ });

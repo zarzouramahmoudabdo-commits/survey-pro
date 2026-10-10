@@ -1,3 +1,4 @@
+import './lock.js';
 import './style.css';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';

@@ -14,6 +14,23 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(bms)); } cat
 window.__bmGet = () => bms;
 window.__bmAddLL = (name, desc, lat, lon) => { const [n, e] = toNE(lat, lon); const b = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, desc, n: Number(n.toFixed(3)), e: Number(e.toFixed(3)), z: null }; bms.push(b); save(); if (ensureMap()) renderBms(); return b.id; };
 window.__bmGo = (id) => setTarget(id);
+window.__bmAddMany = (items) => {
+  let added = 0, skipped = 0;
+  const have = bms.map((b) => b.name + '|' + Math.round(b.n) + '|' + Math.round(b.e));
+  const seen = new Set(have);
+  for (const it of items) {
+    let n = it.n, e = it.e;
+    if (it.lat !== undefined) { try { [n, e] = toNE(it.lat, it.lon); } catch (err) { skipped++; continue; } }
+    if (!isFinite(n) || !isFinite(e)) { skipped++; continue; }
+    const key = it.name + '|' + Math.round(n) + '|' + Math.round(e);
+    if (seen.has(key)) { skipped++; continue; }
+    seen.add(key);
+    bms.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + added, name: it.name, desc: it.desc || '', n: Number(Number(n).toFixed(3)), e: Number(Number(e).toFixed(3)), z: it.z === undefined || it.z === null || isNaN(it.z) ? null : it.z });
+    added++;
+  }
+  if (added) { save(); if (ensureMap()) renderBms(); if (!list.classList.contains('hidden')) renderRows(); }
+  return { added, skipped };
+};
 window.__bmSet = (a) => { bms = a; try { localStorage.setItem(KEY, JSON.stringify(bms)); } catch (e) { /* ignore */ } if (window.__bmChanged) window.__bmChanged(bms); if (ensureMap()) renderBms(); if (!list.classList.contains('hidden')) renderRows(); };
 let target = null, me = null, watchId = null, editing = null, arrived = false, firstFix = false;
 let gm = null, bmLayer = null, meLayer = null;
@@ -80,6 +97,7 @@ function ensureMap() {
   gm = window.__gmap;
   bmLayer = L.layerGroup().addTo(gm);
   meLayer = L.layerGroup().addTo(gm);
+  gm.on('moveend', renderBms);
   return true;
 }
 function popupEl(b, ll) {
@@ -98,9 +116,11 @@ function popupEl(b, ll) {
 function renderBms() {
   if (!ensureMap()) return;
   bmLayer.clearLayers();
+  const bnd = gm.getBounds().pad(0.5); let shown = 0;
   bms.forEach((b) => {
     let ll; try { ll = toLL(b.n, b.e); } catch (e) { return; }
     if (!isFinite(ll[0]) || !isFinite(ll[1])) return;
+    if (b.id !== target && (!bnd.contains(ll) || ++shown > 300)) return;
     const icon = L.divIcon({ className: 'bmi', html: `<span class="bmt${b.id === target ? ' tg' : ''}">▲</span><span class="bml">${esc(b.name)}</span>`, iconSize: [0, 0] });
     L.marker(ll, { icon }).addTo(bmLayer).bindPopup(popupEl(b, ll));
   });
@@ -216,20 +236,24 @@ const norm = (s) => String(s || '').toLowerCase().replace(/[\u064B-\u0652\u0640]
 let q = '', delArm = null, delTimer = 0, backToList = false;
 list.innerHTML = '<b id="bmLc"></b><input id="bmQ" placeholder="🔍 ابحث بالاسم أو الوصف" /><div id="bmRows"></div><div class="rowb" style="margin-top:8px"><button class="s" id="bmLX">إغلاق</button></div>';
 const safeDist = (b) => { try { return navTo(b).dist; } catch (e) { return null; } };
+let lim = 60;
 function renderRows() {
   const terms = norm(q).split(/\s+/).filter(Boolean);
-  const rows = bms.map((b) => ({ b, d: me ? safeDist(b) : null }))
+  const all = bms.map((b) => ({ b, d: me ? safeDist(b) : null }))
     .filter(({ b }) => { const hay = norm(b.name + ' ' + (b.desc || '')); return terms.every((t) => hay.includes(t)); })
     .sort((x, y) => (x.d !== null && y.d !== null ? x.d - y.d : x.d !== null ? -1 : y.d !== null ? 1 : String(x.b.name).localeCompare(String(y.b.name), 'ar', { numeric: true })));
-  $('bmLc').textContent = '📌 الثوابت (' + rows.length + (terms.length ? ' من ' + bms.length : '') + ')';
+  const rows = all.slice(0, lim);
+  $('bmLc').textContent = '📌 الثوابت (' + all.length + (terms.length ? ' من ' + bms.length : '') + ')';
   $('bmRows').innerHTML = rows.length ? rows.map(({ b, d }) =>
-    `<div class="bmr"><div class="bmn" data-g="${b.id}"><b>${esc(b.name)}</b>${b.desc ? '<br>' + esc(b.desc) : ''}${d !== null ? '<br>' + fmtDist(d) : ''}</div><button data-g="${b.id}">🧭</button><button data-v="${b.id}">👁</button><button data-e="${b.id}">✏</button><button data-d="${b.id}">${delArm === b.id ? 'تأكيد؟' : '🗑'}</button></div>`).join('')
+    `<div class="bmr"><div class="bmn" data-g="${b.id}"><b>${esc(b.name)}</b>${b.desc ? '<br>' + esc(b.desc) : ''}${d !== null ? '<br>' + fmtDist(d) : ''}</div><button data-g="${b.id}">🧭</button><button data-v="${b.id}">👁</button><button data-e="${b.id}">✏</button><button data-d="${b.id}">${delArm === b.id ? 'تأكيد؟' : '🗑'}</button></div>`).join('') + (all.length > lim ? `<button class="s" data-more="1" style="width:100%;margin-top:6px">عرض المزيد (${all.length - lim})</button>` : '')
     : '<div style="padding:8px 0">' + (bms.length ? 'مفيش نتيجة للبحث' : 'مفيش ثوابت، اضغط ➕ لإضافة.') + '</div>';
 }
 function openList() { form.classList.add('hidden'); renderRows(); list.classList.remove('hidden'); }
-$('bmQ').addEventListener('input', (e) => { q = e.target.value; renderRows(); });
+let qt = 0;
+$('bmQ').addEventListener('input', (e) => { q = e.target.value; lim = 60; clearTimeout(qt); qt = setTimeout(renderRows, 220); });
 list.addEventListener('click', (ev) => {
   if (ev.target.id === 'bmLX') { list.classList.add('hidden'); return; }
+  if (ev.target.dataset && ev.target.dataset.more) { lim += 60; renderRows(); return; }
   const el = ev.target.closest('[data-g],[data-v],[data-e],[data-d]'); if (!el) return;
   const d = el.dataset;
   if (d.g) { list.classList.add('hidden'); setTarget(d.g); }
@@ -258,3 +282,4 @@ $('bmFit').onclick = fitMe;
 window.addEventListener('geo-draw', () => { if (ensureMap()) renderBms(); });
 import('./sync.js');
 import('./kmz.js');
+import('./bmimp.js');

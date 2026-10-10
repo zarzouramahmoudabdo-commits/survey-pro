@@ -35,3 +35,6 @@ nav button.on{color:#fff;border-top:2px solid #0ea5e9}
 #mpanel .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 #mpanel .mh button{padding:2px 10px;margin-inline-start:4px;background:#334155}
 #mpanel .mt{margin-top:6px;padding-top:6px;border-top:1px solid #334155;color:#fde68a}
+#toast{pointer-events:none}
+button{touch-action:manipulation}
+.rowb button,.kzr button,.bmr button,.bir button,.pjr button,.pb button{min-height:40px;min-width:40px}

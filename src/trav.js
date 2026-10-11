@@ -47,7 +47,13 @@ ob.id = 'tvOpen'; ob.title = 'تقفيل ترافرس'; ob.textContent = '🧮';
 ob.style.cssText = 'padding:6px 12px;font-size:20px;background:#334155';
 if (hdr) hdr.insertBefore(ob, hdr.children[1] || null);
 
-const items = () => (src === 'pj' ? (window.__pts ? window.__pts() : []) : (window.__bmGet ? window.__bmGet() : [])).map((p) => ({ id: p.id, name: String(p.name), n: p.n, e: p.e, z: p.z }));
+const items = () => {
+  const source = pickKnown ? (src === 'pj' ? 'bm' : 'pj') : src;
+  return (source === 'pj'
+    ? (window.__pts ? window.__pts() : [])
+    : (window.__bmGet ? window.__bmGet() : [])
+  ).map((p) => ({ id: p.id, name: String(p.name), n: p.n, e: p.e, z: p.z }));
+};
 const label = (it) => it.name + ' (' + f3(it.n) + ', ' + f3(it.e) + ')';
 
 function setup() {

@@ -77,6 +77,7 @@ function draw() {
   initMap();
   gmap.invalidateSize();
   layer.clearLayers();
+  if (window.__geoLineLayer) { window.__geoLineLayer.remove(); window.__geoLineLayer = null; }
   window.dispatchEvent(new Event('geo-draw'));
   const info = $('geoInfo');
   const pts = getPts();
@@ -96,7 +97,7 @@ function draw() {
   }
   if (!out.length) { info.innerHTML = '<span class="bad">الإحداثيات دي مش مناسبة للنظام ده</span>'; return; }
   const ll = out.map((o) => [o.lat, o.lon]);
-  if (ll.length > 1) L.polyline(ll, { color: '#38bdf8', weight: 2 }).addTo(layer);
+  if (ll.length > 1) { window.__geoLineLayer = L.polyline(ll, { color: '#38bdf8', weight: 2 }); if (window.__geoLine !== false) window.__geoLineLayer.addTo(gmap); }
   out.forEach(({ p, lat, lon }) => {
     const m = L.circleMarker([lat, lon], { radius: 6, color: '#fff', weight: 2, fillColor: '#f43f5e', fillOpacity: 1 }).addTo(layer);
     m.bindTooltip(String(p.name), { permanent: true, direction: 'right', offset: [6, 0], className: 'gl' });

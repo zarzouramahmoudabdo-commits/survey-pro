@@ -210,3 +210,4 @@ $('xCp').onclick = async () => {
   try { await navigator.clipboard.writeText(r.text); toast('تم النسخ'); } catch (e) { toast('فشل النسخ'); }
 };
 import('./projects.js');
+window.__saveFile = saveFile;

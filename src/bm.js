@@ -283,3 +283,5 @@ window.addEventListener('geo-draw', () => { if (ensureMap()) renderBms(); });
 import('./sync.js');
 import('./kmz.js');
 import('./bmimp.js');
+import('./gmeasure.js');
+import('./geoopt.js');

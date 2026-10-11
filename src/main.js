@@ -241,3 +241,4 @@ import('./edit.js');
 window.__setPts = (a) => { points = a; sel = []; render(); dirty = true; if (tab === 'map') { drawMap(false); dirty = false; } drawMeasure(); window.__changed && window.__changed(); };
 import('./edit.js');
 import('./closex.js');
+import('./trav.js');

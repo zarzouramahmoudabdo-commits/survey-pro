@@ -14,6 +14,9 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(bms)); } cat
 window.__bmGet = () => bms;
 window.__bmAddLL = (name, desc, lat, lon) => { const [n, e] = toNE(lat, lon); const b = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, desc, n: Number(n.toFixed(3)), e: Number(e.toFixed(3)), z: null }; bms.push(b); save(); if (ensureMap()) renderBms(); return b.id; };
 window.__bmGo = (id) => setTarget(id);
+window.__bmGoTmp = (nn, ee, name) => { window.__bmTmp = { id: 'tmp', name: name || 'نقطة', desc: '', n: nn, e: ee, z: null }; setTarget('tmp'); };
+window.__bmClearTmp = () => { window.__bmTmp = null; if (target === 'tmp') { target = null; renderBms(); } };
+window.__bmMe = () => me;
 window.__bmAddMany = (items) => {
   let added = 0, skipped = 0;
   const have = bms.map((b) => b.name + '|' + Math.round(b.n) + '|' + Math.round(b.e));
@@ -132,7 +135,7 @@ function renderNav() {
   if (!me) { nb.classList.add('hidden'); return; }
   L.circle([me.lat, me.lon], { radius: me.acc || 5, color: '#38bdf8', weight: 1, fillOpacity: 0.12 }).addTo(meLayer);
   L.circleMarker([me.lat, me.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#2563eb', fillOpacity: 1 }).addTo(meLayer);
-  const b = bms.find((x) => x.id === target);
+  const b = bms.find((x) => x.id === target) || (target === 'tmp' ? window.__bmTmp : null);
   let html = `<b>📍 موقعك</b> (±${Math.round(me.acc || 0)} م)`;
   if (b) {
     try {
@@ -150,7 +153,7 @@ function renderNav() {
 }
 function fitMe() {
   if (!gm) return;
-  const b = bms.find((x) => x.id === target);
+  const b = bms.find((x) => x.id === target) || (target === 'tmp' ? window.__bmTmp : null);
   const pts = [];
   if (me) pts.push([me.lat, me.lon]);
   if (b) { try { pts.push(toLL(b.n, b.e)); } catch (e) { /* ignore */ } }
@@ -285,3 +288,4 @@ import('./kmz.js');
 import('./bmimp.js');
 import('./gmeasure.js');
 import('./geoopt.js');
+import('./pin.js');

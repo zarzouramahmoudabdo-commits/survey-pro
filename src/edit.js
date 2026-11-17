@@ -183,7 +183,7 @@ function build() {
   if (f === 'sdr') return { text: toSDR(pts, o), file: nm + '.sdr', mime: 'text/plain' };
   if (f === 'csv') return { text: toCSV(pts, o), file: nm + '.csv', mime: 'text/csv' };
   const h = num($('xH').value);
-  return { text: toDXF(pts, isNaN(h) || h <= 0 ? 1 : h, true), file: nm + '.dxf', mime: 'application/dxf' };
+  return { text: window.__toDXF2 ? window.__toDXF2(pts, isNaN(h) || h <= 0 ? 0.5 : h) : toDXF(pts, isNaN(h) || h <= 0 ? 1 : h, true), file: nm + '.dxf', mime: 'application/dxf' };
 }
 async function saveFile(name, text, mime) {
   if (Capacitor.isNativePlatform()) {
@@ -211,3 +211,4 @@ $('xCp').onclick = async () => {
 };
 import('./projects.js');
 window.__saveFile = saveFile;
+import('./dxfx.js');

@@ -139,7 +139,7 @@ function drawMap(doFit) {
   points.forEach((p) => {
     const icon = L.divIcon({
       className: 'pt',
-      html: `<span class="dot"></span>${opts.nums ? `<span class="lbl">${esc(p.name)}</span>` : ''}`,
+      html: `<span class="dot"></span>${opts.nums ? `<span class="lbl">${esc(p.name)}</span>` : ''}<span class="lz">${p.z ? 'Z:' + p.z.toFixed(3) : ''}</span><span class="ld">${esc(p.code || '')}</span>`,
       iconSize: [0, 0],
     });
     const m = L.marker(ll(p), { icon }).addTo(layer);
@@ -241,3 +241,5 @@ window.__setPts = (a) => { points = a; sel = []; render(); dirty = true; if (tab
 import('./edit.js');
 import('./closex.js');
 import('./trav.js');
+import('./layers.js');
+import('./ptlist.js');
